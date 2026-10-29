@@ -1,0 +1,411 @@
+
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DS Style - Smart Dukaan Hisab</title>
+
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f3f4f8;color:#222;font-family:Arial,sans-serif}
+header{background:linear-gradient(120deg,#b71c1c,#ef6c00);color:white;padding:22px 15px;text-align:center}
+header h2{margin:0 0 6px}
+main{max-width:750px;margin:auto;padding:12px}
+.card{background:white;border-radius:14px;padding:16px;margin:12px 0;box-shadow:0 2px 9px #0001}
+button,input,select{width:100%;padding:12px;margin:5px 0;border:1px solid #ddd;border-radius:9px;font-size:16px}
+button{background:#b71c1c;color:white;border:0;font-weight:bold;cursor:pointer}
+.voice{background:#16803c;font-size:20px;padding:18px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.stat{background:#fff;border:1px solid #eee;padding:13px;border-radius:11px;font-size:13px}
+.stat strong{display:block;font-size:21px;margin-top:7px}
+.small{font-size:12px;color:#666;line-height:1.5}
+.product-preview{display:flex;align-items:center;gap:12px;background:#f7f7f7;padding:10px;border-radius:12px;margin:10px 0}
+.product-preview img{width:76px;height:88px;object-fit:cover;border-radius:8px;background:#eee}
+.product-preview strong{font-size:14px}
+.product-preview small{display:block;color:#666;margin-top:5px}
+table{width:100%;border-collapse:collapse;font-size:12px}
+th,td{padding:8px 5px;text-align:left;border-bottom:1px solid #eee}
+th{background:#f7f7f7}
+#status{background:#fff8e1;padding:10px;border-radius:8px;font-size:14px;white-space:pre-wrap}
+.qr{width:100%;max-width:280px;display:block;margin:10px auto}
+</style>
+</head>
+
+<body>
+<header>
+<h2>🛍️ DS Style — दुकान हिसाब</h2>
+<p>Voice Sales • Product Photos • Daily History</p>
+</header>
+
+<main>
+
+<div class="card">
+<button class="voice" onclick="startVoice()">🎙️ बोलकर बिक्री जोड़ें</button>
+<p class="small">उदाहरण: “एक पीस बिका डेढ़ सौ रुपये का कैश।”</p>
+<div id="status">बोलने के लिए बटन दबाएँ।</div>
+</div>
+
+<div class="grid">
+<div class="stat">आज की बिक्री<strong id="todayTotal">₹0</strong></div>
+<div class="stat">आज बिके पीस<strong id="todayQty">0</strong></div>
+<div class="stat">आज का कैश<strong id="todayCash">₹0</strong></div>
+<div class="stat">आज ऑनलाइन<strong id="todayOnline">₹0</strong></div>
+<div class="stat">आज उधार<strong id="todayDue">₹0</strong></div>
+<div class="stat">कुल बिक्री<strong id="allTotal">₹0</strong></div>
+<div class="stat">कुल कैश<strong id="allCash">₹0</strong></div>
+<div class="stat">कुल ऑनलाइन<strong id="allOnline">₹0</strong></div>
+</div>
+
+<div class="card">
+<h3>➕ नई बिक्री जोड़ें</h3>
+
+<label>प्रोडक्ट का नाम</label>
+<input id="product" placeholder="Bermuda, T-Shirt, शर्ट, जींस">
+
+<div class="product-preview">
+<img id="productPhoto"
+src="https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=180&q=80"
+alt="Product photo">
+<div>
+<strong id="productTitle">T-Shirt</strong>
+<small>प्रोडक्ट की फोटो</small>
+</div>
+</div>
+
+<label>पीस की संख्या</label>
+<input id="qty" type="number" min="1" value="1">
+
+<label>एक पीस का दाम (₹)</label>
+<input id="price" type="number" min="0" value="150">
+
+<label>पेमेंट का तरीका</label>
+<select id="method">
+<option value="कैश">कैश</option>
+<option value="ऑनलाइन">ऑनलाइन</option>
+<option value="उधार">उधार</option>
+</select>
+
+<button onclick="addSale()">बिक्री सेव करें</button>
+</div>
+
+<div class="card">
+<h3>📲 Google Pay UPI</h3>
+<p><b>UPI ID:</b> 9473257365@okbizaxis</p>
+<button onclick="copyUPI()">UPI ID कॉपी करें</button>
+
+<label>प्राप्त पेमेंट की रकम (₹)</label>
+<input id="received" type="number" min="1" placeholder="जैसे 150">
+
+<button onclick="addUPI()">पेमेंट जाँचने के बाद ऑनलाइन एंट्री जोड़ें</button>
+<p class="small">यहाँ अपनी बैंक/Google Pay हिस्ट्री में सफल पेमेंट जाँचकर ही एंट्री जोड़ें। UPI ID से वेबसाइट अपने आप बैंक पेमेंट नहीं पढ़ सकती।</p>
+</div>
+
+<div class="card">
+<h3>📅 तारीख के हिसाब से हिस्ट्री</h3>
+<label>तारीख चुनें</label>
+<input id="historyDate" type="date">
+
+<div class="grid">
+<div class="stat">उस दिन की बिक्री<strong id="dateTotal">₹0</strong></div>
+<div class="stat">उस दिन के पीस<strong id="dateQty">0</strong></div>
+<div class="stat">कैश<strong id="dateCash">₹0</strong></div>
+<div class="stat">ऑनलाइन<strong id="dateOnline">₹0</strong></div>
+<div class="stat">उधार<strong id="dateDue">₹0</strong></div>
+</div>
+</div>
+
+<div class="card">
+<h3>📒 सभी बिक्री रिकॉर्ड</h3>
+<button onclick="downloadCSV()">हिस्ट्री डाउनलोड करें</button>
+<div style="overflow-x:auto">
+<table>
+<thead>
+<tr><th>तारीख/समय</th><th>प्रोडक्ट</th><th>पीस</th><th>रकम</th><th>पेमेंट</th><th></th></tr>
+</thead>
+<tbody id="records"></tbody>
+</table>
+</div>
+<p class="small">रिकॉर्ड इसी ब्राउज़र में सेव होता है। बैकअप के लिए हिस्ट्री डाउनलोड करें।</p>
+</div>
+
+</main>
+
+<script>
+const KEY="dsStyleShopHistory";
+let sales=[];
+
+try{sales=JSON.parse(localStorage.getItem(KEY)||"[]")}
+catch(e){sales=[]}
+
+function today(){
+ const d=new Date();
+ return d.getFullYear()+"-"+
+ String(d.getMonth()+1).padStart(2,"0")+"-"+
+ String(d.getDate()).padStart(2,"0");
+}
+
+function money(n){
+ return "₹"+Number(n||0).toLocaleString("en-IN");
+}
+
+function sum(rows,method){
+ return rows.filter(x=>!method||x.method===method)
+ .reduce((a,x)=>a+x.total,0);
+}
+
+function save(){
+ localStorage.setItem(KEY,JSON.stringify(sales));
+ render();
+}
+
+function addRecord(q,total,method,product){
+ q=Number(q);
+ total=Number(total);
+
+ if(!Number.isInteger(q)||q<1||!Number.isFinite(total)||total<0){
+  alert("पीस और रकम सही भरें");
+  return false;
+ }
+
+ const d=new Date();
+
+ sales.push({
+  id:Date.now()+Math.random(),
+  date:today(),
+  time:d.toLocaleTimeString("hi-IN",{hour:"2-digit",minute:"2-digit"}),
+  qty:q,total:total,price:total/q,
+  method:method,product:product||"अन्य"
+ });
+
+ save();
+ document.getElementById("status").textContent="बिक्री सेव हो गई।";
+ return true;
+}
+
+function addSale(){
+ const q=Number(document.getElementById("qty").value);
+ const p=Number(document.getElementById("price").value);
+ const method=document.getElementById("method").value;
+ const product=document.getElementById("product").value.trim()||"अन्य";
+
+ if(!Number.isFinite(p)||p<0){
+  alert("सही कीमत भरें");return;
+ }
+
+ addRecord(q,q*p,method,product);
+}
+
+function addUPI(){
+ const amount=Number(document.getElementById("received").value);
+
+ if(!Number.isFinite(amount)||amount<=0){
+  alert("सही रकम भरें");return;
+ }
+
+ if(confirm("क्या आपने Google Pay या बैंक में सफल पेमेंट देखा है? रकम: "+money(amount))){
+  if(addRecord(1,amount,"ऑनलाइन","UPI पेमेंट")){
+   document.getElementById("received").value="";
+  }
+ }
+}
+
+function copyUPI(){
+ const id="9473257365@okbizaxis";
+
+ if(navigator.clipboard&&window.isSecureContext){
+  navigator.clipboard.writeText(id).then(()=>alert("UPI ID कॉपी हो गई"));
+ }else{
+  prompt("UPI ID कॉपी करें",id);
+ }
+}
+
+const productImages=[
+ {names:["bermuda","बर्मूडा","बरमूडा","shorts","शॉर्ट्स","चड्डा","शॉर्ट चड्डा"],
+  title:"Bermuda / शॉर्ट चड्डा",
+  image:"https://images.unsplash.com/photo-1591195853828-11db59a44f6b?auto=format&fit=crop&w=240&q=85"},
+ {names:["t-shirt","tshirt","टी-शर्ट","टीशर्ट","टी शर्ट"],
+  title:"T-Shirt",
+  image:"https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?auto=format&fit=crop&w=240&q=85"},
+ {names:["shirt","शर्ट"],
+  title:"Shirt",
+  image:"https://images.unsplash.com/photo-1598033129183-c4f50c736f10?auto=format&fit=crop&w=240&q=85"},
+ {names:["jeans","जींस","जिंस"],
+  title:"Jeans",
+  image:"https://images.unsplash.com/photo-1542272604-787c3835535d?auto=format&fit=crop&w=240&q=85"},
+ {names:["pant","पैंट","trouser","ट्राउजर"],
+  title:"Pants",
+  image:"https://images.unsplash.com/photo-1473966968600-fa801b869a1a?auto=format&fit=crop&w=240&q=85"},
+ {names:["kurta","कुर्ता"],
+  title:"Kurta",
+  image:"https://images.unsplash.com/photo-1597983073493-88cd35cf93f4?auto=format&fit=crop&w=240&q=85"}
+];
+
+document.getElementById("product").addEventListener("input",function(){
+ const name=this.value.trim().toLowerCase();
+ const found=productImages.find(item=>
+  item.names.some(word=>name.includes(word.toLowerCase()))
+ );
+
+ if(found){
+  document.getElementById("productPhoto").src=found.image;
+  document.getElementById("productTitle").textContent=found.title;
+ }else{
+  document.getElementById("productTitle").textContent=name||"प्रोडक्ट का नाम";
+ }
+});
+
+function startVoice(){
+ const SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+
+ if(!SR){
+  alert("Android Chrome में वेबसाइट खोलकर माइक्रोफोन की अनुमति दें।");
+  return;
+ }
+
+ const rec=new SR();
+ rec.lang="hi-IN";
+ rec.interimResults=false;
+ rec.maxAlternatives=1;
+
+ document.getElementById("status").textContent="🎙️ सुन रहा हूँ...";
+
+ rec.onresult=e=>{
+  const spoken=e.results[0][0].transcript.toLowerCase();
+  let qty=1,price=NaN;
+
+  const qm=spoken.match(/(\d+)\s*(पीस|piece|नग)/);
+  if(qm)qty=Number(qm[1]);
+
+  const hindiQty={"एक":1,"दो":2,"तीन":3,"चार":4,"पांच":5,"पाँच":5,"छह":6,"सात":7,"आठ":8,"नौ":9,"दस":10};
+
+  if(!qm){
+   for(const word in hindiQty){
+    if(spoken.includes(word+" पीस")||spoken.includes(word+" नग")){
+     qty=hindiQty[word];break;
+    }
+   }
+  }
+
+  const pm=spoken.match(/(\d+)\s*(रुपये|रुपए|रुपया|रु|rs)/);
+  if(pm)price=Number(pm[1]);
+
+  if(!Number.isFinite(price)){
+   if(/डेढ़\s*सौ|डेढ़सौ/.test(spoken))price=150;
+   else if(/ढाई\s*सौ/.test(spoken))price=250;
+   else if(/दो\s*सौ/.test(spoken))price=200;
+   else if(/तीन\s*सौ/.test(spoken))price=300;
+   else if(/चार\s*सौ/.test(spoken))price=400;
+   else if(/पांच\s*सौ|पाँच\s*सौ/.test(spoken))price=500;
+   else if(/एक\s*सौ/.test(spoken))price=100;
+  }
+
+  let method="कैश";
+  if(/ऑनलाइन|online|upi|यूपीआई|फोनपे|paytm|गूगल पे/.test(spoken)){
+   method="ऑनलाइन";
+  }else if(/उधार|बाकी/.test(spoken)){
+   method="उधार";
+  }
+
+  const match=productImages.find(item=>
+   item.names.some(word=>spoken.includes(word.toLowerCase()))
+  );
+  const product=match?match.title:"वॉइस बिक्री";
+
+  document.getElementById("status").textContent="आपने कहा: "+spoken;
+
+  if(!Number.isFinite(price)){
+   alert("दाम समझ नहीं आया। बिक्री फॉर्म में कीमत भरें।");
+   document.getElementById("qty").value=qty;
+   document.getElementById("product").value=product==="वॉइस बिक्री"?"":product;
+   return;
+  }
+
+  if(confirm(qty+" पीस × "+money(price)+" = "+money(qty*price)+"\nपेमेंट: "+method+"\nप्रोडक्ट: "+product)){
+   addRecord(qty,qty*price,method,product);
+  }
+ };
+
+ rec.onerror=()=>document.getElementById("status").textContent="माइक्रोफोन की अनुमति जाँचें।";
+
+ try{rec.start()}catch(e){
+  document.getElementById("status").textContent="माइक शुरू नहीं हुआ। दोबारा कोशिश करें।";
+ }
+}
+
+function render(){
+ const t=today();
+ const tr=sales.filter(x=>x.date===t);
+
+ document.getElementById("todayTotal").textContent=money(sum(tr));
+ document.getElementById("todayQty").textContent=tr.reduce((a,x)=>a+x.qty,0);
+ document.getElementById("todayCash").textContent=money(sum(tr,"कैश"));
+ document.getElementById("todayOnline").textContent=money(sum(tr,"ऑनलाइन"));
+ document.getElementById("todayDue").textContent=money(sum(tr,"उधार"));
+
+ document.getElementById("allTotal").textContent=money(sum(sales));
+ document.getElementById("allCash").textContent=money(sum(sales,"कैश"));
+ document.getElementById("allOnline").textContent=money(sum(sales,"ऑनलाइन"));
+
+ const day=document.getElementById("historyDate").value||t;
+ const dr=sales.filter(x=>x.date===day);
+
+ document.getElementById("dateTotal").textContent=money(sum(dr));
+ document.getElementById("dateQty").textContent=dr.reduce((a,x)=>a+x.qty,0);
+ document.getElementById("dateCash").textContent=money(sum(dr,"कैश"));
+ document.getElementById("dateOnline").textContent=money(sum(dr,"ऑनलाइन"));
+ document.getElementById("dateDue").textContent=money(sum(dr,"उधार"));
+
+ const tbody=document.getElementById("records");
+ tbody.replaceChildren();
+
+ [...sales].reverse().forEach(s=>{
+  const row=document.createElement("tr");
+
+  [s.date+" "+s.time,s.product,s.qty,money(s.total),s.method].forEach(v=>{
+   const td=document.createElement("td");
+   td.textContent=v;
+   row.appendChild(td);
+  });
+
+  const td=document.createElement("td");
+  const btn=document.createElement("button");
+  btn.textContent="हटाएँ";
+
+  btn.onclick=()=>{
+   if(confirm("क्या यह रिकॉर्ड हटाना है?")){
+    sales=sales.filter(x=>x.id!==s.id);
+    save();
+   }
+  };
+
+  td.appendChild(btn);
+  row.appendChild(td);
+  tbody.appendChild(row);
+ });
+}
+
+function downloadCSV(){
+ const rows=[
+  ["Date","Time","Product","Pieces","Total","Payment"],
+  ...sales.map(s=>[s.date,s.time,s.product,s.qty,s.total,s.method])
+ ];
+
+ const csv="\uFEFF"+rows.map(r=>
+  r.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(",")
+ ).join("\r\n");
+
+ const url=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
+ const a=document.createElement("a");
+ a.href=url;
+ a.download="DS-Style-Hisab.csv";
+ a.click();
+ URL.revokeObjectURL(url);
+}
+
+document.getElementById("historyDate").value=today();
+document.getElementById("historyDate").addEventListener("change",render);
+render();
+</script>
+</body>
+</html>
