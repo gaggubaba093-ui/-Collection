@@ -1,0 +1,293 @@
+
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Voice Dukaan Hisab</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#f3f4f6;color:#222}
+header{background:#b71c1c;color:white;padding:22px;text-align:center}
+main{max-width:700px;margin:auto;padding:14px}
+.card{background:white;padding:16px;border-radius:14px;margin:12px 0;box-shadow:0 2px 8px #0001}
+button,input,select{width:100%;padding:13px;margin:6px 0;border-radius:9px;border:1px solid #ddd;font-size:16px}
+button{background:#b71c1c;color:white;border:0;font-weight:bold;cursor:pointer}
+.voice{font-size:20px;padding:20px;background:#16803c}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{background:#fff;padding:15px;border-radius:12px}
+.stat strong{display:block;font-size:23px;margin-top:8px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+td,th{padding:8px;border-bottom:1px solid #ddd;text-align:left}
+.small{font-size:13px;color:#666}
+</style>
+</head>
+<body>
+
+<header>
+<h2>🛍️ मेरी कपड़ों की दुकान</h2>
+<p>बोलिए और बिक्री का हिसाब जोड़िए</p>
+</header>
+
+<main>
+<div class="card">
+<button class="voice" onclick="startVoice()">🎙️ बोलकर बिक्री जोड़ें</button>
+<p class="small">उदाहरण: एक पीस बिका डेढ़ सौ रुपये का कैश।</p>
+<div id="status">बोलने के लिए बटन दबाएँ।</div>
+</div>
+
+<div class="grid">
+<div class="stat">आज की बिक्री<strong id="total">₹0</strong></div>
+<div class="stat">आज के पीस<strong id="piecesToday">0</strong></div>
+<div class="stat">कैश<strong id="cash">₹0</strong></div>
+<div class="stat">ऑनलाइन<strong id="online">₹0</strong></div>
+</div>
+
+<div class="card">
+<h3>बिक्री मैन्युअल जोड़ें</h3>
+<label>पीस की संख्या</label>
+<input id="qty" type="number" value="1" min="1">
+
+<label>एक पीस का दाम (₹)</label>
+<input id="price" type="number" value="150" min="0">
+
+<label>पेमेंट</label>
+<select id="method">
+<option value="कैश">कैश</option>
+<option value="ऑनलाइन">ऑनलाइन</option>
+<option value="उधार">उधार</option>
+</select>
+
+<label>प्रोडक्ट का नाम (वैकल्पिक)</label>
+<input id="product" placeholder="जैसे वन पीस ड्रेस">
+
+<button onclick="addSale()">बिक्री जोड़ें</button>
+</div>
+
+<div class="card">
+<h3>📒 बिक्री का रिकॉर्ड</h3>
+<button onclick="exportCSV()">रिकॉर्ड डाउनलोड करें</button>
+<div style="overflow-x:auto">
+<table>
+<thead>
+<tr><th>समय</th><th>पीस</th><th>कुल</th><th>पेमेंट</th><th></th></tr>
+</thead>
+<tbody id="records"></tbody>
+</table>
+</div>
+</div>
+</main>
+
+<script>
+const KEY="meriDukaanSales";
+let sales=[];
+
+try {
+ sales=JSON.parse(localStorage.getItem(KEY)||"[]");
+} catch(e) {
+ sales=[];
+}
+
+function money(n){
+ return "₹"+Number(n).toLocaleString("en-IN");
+}
+
+function today(){
+ const d=new Date();
+ return d.getFullYear()+"-"+
+ String(d.getMonth()+1).padStart(2,"0")+"-"+
+ String(d.getDate()).padStart(2,"0");
+}
+
+function save(){
+ localStorage.setItem(KEY,JSON.stringify(sales));
+ render();
+}
+
+function addSale(q,p,m,n){
+ q=Number(q ?? document.getElementById("qty").value);
+ p=Number(p ?? document.getElementById("price").value);
+ m=m ?? document.getElementById("method").value;
+ n=n ?? document.getElementById("product").value;
+
+ if(!Number.isInteger(q)||q<1||!Number.isFinite(p)||p<0){
+  alert("पीस और दाम सही भरें।");
+  return;
+ }
+
+ sales.push({
+  id:Date.now()+Math.random(),
+  date:today(),
+  time:new Date().toLocaleTimeString("hi-IN",{
+   hour:"2-digit",minute:"2-digit"
+  }),
+  qty:q,price:p,total:q*p,method:m,product:n
+ });
+
+ save();
+ document.getElementById("status").textContent=
+  "बिक्री जोड़ दी गई: "+q+" पीस, "+money(q*p);
+ document.getElementById("product").value="";
+}
+
+function render(){
+ const rows=sales.filter(s=>s.date===today());
+
+ document.getElementById("total").textContent=
+  money(rows.reduce((a,s)=>a+s.total,0));
+
+ document.getElementById("piecesToday").textContent=
+  rows.reduce((a,s)=>a+s.qty,0);
+
+ document.getElementById("cash").textContent=
+  money(rows.filter(s=>s.method==="कैश")
+  .reduce((a,s)=>a+s.total,0));
+
+ document.getElementById("online").textContent=
+  money(rows.filter(s=>s.method==="ऑनलाइन")
+  .reduce((a,s)=>a+s.total,0));
+
+ const tbody=document.getElementById("records");
+ tbody.innerHTML="";
+
+ [...sales].reverse().forEach(s=>{
+  const tr=document.createElement("tr");
+  [s.time,s.qty,money(s.total),s.method].forEach(v=>{
+   const td=document.createElement("td");
+   td.textContent=v;
+   tr.appendChild(td);
+  });
+
+  const td=document.createElement("td");
+  const b=document.createElement("button");
+  b.textContent="❌";
+  b.onclick=()=>{
+   if(confirm("यह रिकॉर्ड हटाएँ?")){
+    sales=sales.filter(x=>x.id!==s.id);
+    save();
+   }
+  };
+  td.appendChild(b);
+  tr.appendChild(td);
+  tbody.appendChild(tr);
+ });
+}
+
+function startVoice(){
+ const Speech=window.SpeechRecognition||
+              window.webkitSpeechRecognition;
+
+ if(!Speech){
+  document.getElementById("status").textContent=
+  "वॉइस सुविधा के लिए Android Chrome में यह वेबसाइट खोलें।";
+  return;
+ }
+
+ const rec=new Speech();
+ rec.lang="hi-IN";
+ rec.interimResults=false;
+ rec.maxAlternatives=1;
+
+ document.getElementById("status").textContent=
+ "🎙️ सुन रहा हूँ... अब बिक्री बोलिए।";
+
+ rec.onresult=function(e){
+  const text=e.results[0][0].transcript;
+  document.getElementById("status").textContent=
+  "आपने कहा: "+text;
+
+  const t=text.toLowerCase();
+
+  // पीस की संख्या पहचानें
+  let qty=1;
+  const qm=t.match(/(\d+)\s*(पीस|piece|नग)/);
+  const hindiQty={
+   "एक":1,"दो":2,"तीन":3,"चार":4,"पांच":5,
+   "पाँच":5,"छह":6,"सात":7,"आठ":8,"नौ":9,"दस":10
+  };
+
+  if(qm) qty=Number(qm[1]);
+  else {
+   for(const word in hindiQty){
+    if(t.includes(word+" पीस")||t.includes(word+" नग")){
+     qty=hindiQty[word];break;
+    }
+   }
+  }
+
+  // कीमत पहचानें
+  let price=NaN;
+  const digits=t.match(/(\d+)\s*(रुपये|रुपए|रुपया|रु|rs)/);
+  if(digits) price=Number(digits[1]);
+
+  if(!Number.isFinite(price)){
+   if(/डेढ़\s*सौ|डेढ़सौ/.test(t)) price=150;
+   else if(/ढाई\s*सौ/.test(t)) price=250;
+   else if(/दो\s*सौ/.test(t)) price=200;
+   else if(/तीन\s*सौ/.test(t)) price=300;
+   else if(/चार\s*सौ/.test(t)) price=400;
+   else if(/पांच\s*सौ|पाँच\s*सौ/.test(t)) price=500;
+   else if(/एक\s*सौ/.test(t)) price=100;
+  }
+
+  let method="कैश";
+  if(/ऑनलाइन|online|upi|यूपीआई|फोनपे|paytm|गूगल पे/.test(t)){
+   method="ऑनलाइन";
+  } else if(/उधार|बाकी/.test(t)){
+   method="उधार";
+  }
+
+  if(!Number.isFinite(price)){
+   document.getElementById("status").textContent=
+   "दाम समझ नहीं आया। नीचे दाम भरकर बिक्री जोड़ें।";
+   document.getElementById("qty").value=qty;
+   return;
+  }
+
+  const msg=qty+" पीस × "+money(price)+
+   " = "+money(qty*price)+" ("+method+")";
+
+  if(confirm("क्या यह बिक्री जोड़नी है?\n"+msg)){
+   addSale(qty,price,method,"वॉइस से जोड़ी गई");
+  }
+ };
+
+ rec.onerror=function(){
+  document.getElementById("status").textContent=
+  "माइक की अनुमति जाँचें और दोबारा कोशिश करें।";
+ };
+
+ try{rec.start();}
+ catch(e){
+  document.getElementById("status").textContent=
+  "माइक शुरू नहीं हुआ। पेज दोबारा खोलें।";
+ }
+}
+
+function exportCSV(){
+ const rows=[
+  ["तारीख","समय","पीस","दाम","कुल","पेमेंट","प्रोडक्ट"],
+  ...sales.map(s=>[
+   s.date,s.time,s.qty,s.price,s.total,s.method,s.product
+  ])
+ ];
+
+ const csv="\uFEFF"+rows.map(r=>
+  r.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(",")
+ ).join("\r\n");
+
+ const url=URL.createObjectURL(
+  new Blob([csv],{type:"text/csv;charset=utf-8;"})
+ );
+
+ const a=document.createElement("a");
+ a.href=url;
+ a.download="dukaan-hisaab.csv";
+ a.click();
+ URL.revokeObjectURL(url);
+}
+
+render();
+</script>
+</body>
+</html>
