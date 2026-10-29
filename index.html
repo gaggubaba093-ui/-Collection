@@ -1,0 +1,248 @@
+
+<!DOCTYPE html>
+<html lang="hi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>My Shop Voice Hisab</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#f2f4f8;font-family:Arial,sans-serif;color:#222}
+header{background:#b71c1c;color:white;text-align:center;padding:20px}
+main{max-width:700px;margin:auto;padding:12px}
+.card{background:white;padding:16px;margin:12px 0;border-radius:14px;box-shadow:0 2px 8px #ddd}
+button,input,select{width:100%;padding:12px;margin:5px 0;border:1px solid #ddd;border-radius:8px;font-size:16px}
+button{background:#b71c1c;color:white;border:0;font-weight:bold}
+.voice{background:#16803c;font-size:20px;padding:18px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+.stat{background:#fff;padding:13px;border-radius:10px;border:1px solid #eee}
+.stat strong{display:block;font-size:22px;margin-top:7px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+td,th{padding:8px;border-bottom:1px solid #ddd;text-align:left}
+.small{font-size:12px;color:#666}
+img{max-width:100%;height:auto}
+</style>
+</head>
+<body>
+<header>
+<h2>🛍️ मेरी दुकान का हिसाब</h2>
+<p>Voice Sales & Payment History</p>
+</header>
+
+<main>
+<div class="card">
+<button class="voice" onclick="startVoice()">🎙️ बोलकर बिक्री जोड़ें</button>
+<p class="small">उदाहरण: एक पीस बिका डेढ़ सौ रुपये का कैश।</p>
+<div id="status">बोलने के लिए बटन दबाएँ।</div>
+</div>
+
+<div class="grid">
+<div class="stat">आज की बिक्री<strong id="todayTotal">₹0</strong></div>
+<div class="stat">आज के पीस<strong id="todayQty">0</strong></div>
+<div class="stat">आज कैश<strong id="todayCash">₹0</strong></div>
+<div class="stat">आज ऑनलाइन<strong id="todayOnline">₹0</strong></div>
+<div class="stat">आज उधार<strong id="todayDue">₹0</strong></div>
+<div class="stat">सभी दिनों की बिक्री<strong id="allTotal">₹0</strong></div>
+<div class="stat">कुल कैश<strong id="allCash">₹0</strong></div>
+<div class="stat">कुल ऑनलाइन<strong id="allOnline">₹0</strong></div>
+</div>
+
+<div class="card">
+<h3>➕ बिक्री जोड़ें</h3>
+<label>पीस की संख्या</label>
+<input id="qty" type="number" min="1" value="1">
+<label>एक पीस का दाम ₹</label>
+<input id="price" type="number" min="0" value="150">
+<label>पेमेंट का तरीका</label>
+<select id="method">
+<option value="कैश">कैश</option>
+<option value="ऑनलाइन">ऑनलाइन</option>
+<option value="उधार">उधार</option>
+</select>
+<label>प्रोडक्ट का नाम</label>
+<input id="product" placeholder="वन पीस ड्रेस">
+<button onclick="addSale()">बिक्री सेव करें</button>
+</div>
+
+<div class="card">
+<h3>📲 Google Pay QR</h3>
+<img src="upi-qr.jpg" alt="दुकान का UPI QR" style="width:280px;display:block;margin:auto">
+<p><b>UPI ID:</b> 9473257365@okbizaxis</p>
+<button onclick="copyUPI()">UPI ID कॉपी करें</button>
+<hr>
+<h4>पेमेंट प्राप्त हुआ?</h4>
+<label>वास्तव में प्राप्त रकम ₹</label>
+<input id="received" type="number" min="1" placeholder="जैसे 150">
+<button onclick="addUPI()">पुष्टि के बाद ऑनलाइन एंट्री जोड़ें</button>
+<p class="small">पहले Google Pay या बैंक में सफल पेमेंट जाँचें। यह बटन अपने आप बैंक पेमेंट सत्यापित नहीं करता।</p>
+</div>
+
+<div class="card">
+<h3>📅 तारीख के हिसाब से हिस्ट्री</h3>
+<input id="historyDate" type="date">
+<div class="grid">
+<div class="stat">बिक्री<strong id="dateTotal">₹0</strong></div>
+<div class="stat">पीस<strong id="dateQty">0</strong></div>
+<div class="stat">कैश<strong id="dateCash">₹0</strong></div>
+<div class="stat">ऑनलाइन<strong id="dateOnline">₹0</strong></div>
+<div class="stat">उधार<strong id="dateDue">₹0</strong></div>
+</div>
+</div>
+
+<div class="card">
+<h3>📒 सभी बिक्री रिकॉर्ड</h3>
+<button onclick="downloadCSV()">हिस्ट्री डाउनलोड करें</button>
+<div style="overflow-x:auto">
+<table>
+<thead><tr><th>तारीख</th><th>पीस</th><th>रकम</th><th>पेमेंट</th><th></th></tr></thead>
+<tbody id="records"></tbody>
+</table>
+</div>
+</div>
+</main>
+
+<script>
+const KEY="shopVoiceSalesV3";
+let sales=[];
+try{sales=JSON.parse(localStorage.getItem(KEY)||"[]")}catch(e){sales=[]}
+
+function today(){
+ let d=new Date();
+ return d.getFullYear()+"-"+String(d.getMonth()+1).padStart(2,"0")+"-"+String(d.getDate()).padStart(2,"0");
+}
+function money(n){
+ return "₹"+Number(n||0).toLocaleString("en-IN");
+}
+function sum(rows,method){
+ return rows.filter(x=>!method||x.method===method)
+ .reduce((a,x)=>a+x.total,0);
+}
+function save(){
+ localStorage.setItem(KEY,JSON.stringify(sales));
+ render();
+}
+function addRecord(q,total,method,product){
+ q=Number(q);total=Number(total);
+ if(!Number.isInteger(q)||q<1||!Number.isFinite(total)||total<=0){
+  alert("पीस और रकम सही भरें");return;
+ }
+ let d=new Date();
+ sales.push({
+  id:Date.now()+Math.random(),
+  date:today(),
+  time:d.toLocaleTimeString("hi-IN",{hour:"2-digit",minute:"2-digit"}),
+  qty:q,total:total,price:total/q,
+  method:method,product:product||""
+ });
+ save();
+ document.getElementById("status").textContent="बिक्री हिसाब में जोड़ दी गई।";
+}
+function addSale(){
+ let q=Number(document.getElementById("qty").value);
+ let p=Number(document.getElementById("price").value);
+ addRecord(q,q*p,document.getElementById("method").value,
+ document.getElementById("product").value);
+}
+function addUPI(){
+ let amount=Number(document.getElementById("received").value);
+ if(!Number.isFinite(amount)||amount<=0){
+  alert("सही प्राप्त रकम भरें");return;
+ }
+ if(confirm("क्या आपने बैंक/Google Pay में पेमेंट सफल देखा है? "+money(amount))){
+  addRecord(1,amount,"ऑनलाइन","UPI पेमेंट");
+  document.getElementById("received").value="";
+ }
+}
+function copyUPI(){
+ let id="9473257365@okbizaxis";
+ if(navigator.clipboard&&window.isSecureContext){
+  navigator.clipboard.writeText(id).then(()=>alert("UPI ID कॉपी हो गई"));
+ }else prompt("UPI ID कॉपी करें",id);
+}
+function render(){
+ let t=today(),tr=sales.filter(x=>x.date===t);
+ document.getElementById("todayTotal").textContent=money(sum(tr));
+ document.getElementById("todayQty").textContent=tr.reduce((a,x)=>a+x.qty,0);
+ document.getElementById("todayCash").textContent=money(sum(tr,"कैश"));
+ document.getElementById("todayOnline").textContent=money(sum(tr,"ऑनलाइन"));
+ document.getElementById("todayDue").textContent=money(sum(tr,"उधार"));
+ document.getElementById("allTotal").textContent=money(sum(sales));
+ document.getElementById("allCash").textContent=money(sum(sales,"कैश"));
+ document.getElementById("allOnline").textContent=money(sum(sales,"ऑनलाइन"));
+
+ let day=document.getElementById("historyDate").value||t;
+ let dr=sales.filter(x=>x.date===day);
+ document.getElementById("dateTotal").textContent=money(sum(dr));
+ document.getElementById("dateQty").textContent=dr.reduce((a,x)=>a+x.qty,0);
+ document.getElementById("dateCash").textContent=money(sum(dr,"कैश"));
+ document.getElementById("dateOnline").textContent=money(sum(dr,"ऑनलाइन"));
+ document.getElementById("dateDue").textContent=money(sum(dr,"उधार"));
+
+ let tbody=document.getElementById("records");
+ tbody.replaceChildren();
+ [...sales].reverse().forEach(s=>{
+  let row=document.createElement("tr");
+  [s.date+" "+s.time,s.qty,money(s.total),s.method].forEach(v=>{
+   let td=document.createElement("td");td.textContent=v;row.appendChild(td);
+  });
+  let td=document.createElement("td"),b=document.createElement("button");
+  b.textContent="हटाएँ";
+  b.onclick=()=>{
+   if(confirm("यह रिकॉर्ड हटाएँ?")){
+    sales=sales.filter(x=>x.id!==s.id);save();
+   }
+  };
+  td.appendChild(b);row.appendChild(td);tbody.appendChild(row);
+ });
+}
+function startVoice(){
+ let SR=window.SpeechRecognition||window.webkitSpeechRecognition;
+ if(!SR){alert("Android Chrome में वेबसाइट खोलकर कोशिश करें।");return;}
+ let rec=new SR();rec.lang="hi-IN";
+ document.getElementById("status").textContent="सुन रहा हूँ...";
+ rec.onresult=e=>{
+  let spoken=e.results[0][0].transcript.toLowerCase();
+  let q=1,p=NaN;
+  let qm=spoken.match(/(\d+)\s*(पीस|piece|नग)/);
+  if(qm)q=Number(qm[1]);
+  else{
+   let words={"एक":1,"दो":2,"तीन":3,"चार":4,"पांच":5,"पाँच":5,"छह":6,"सात":7,"आठ":8,"नौ":9,"दस":10};
+   for(let w in words)if(spoken.includes(w+" पीस"))q=words[w];
+  }
+  let pm=spoken.match(/(\d+)\s*(रुपये|रुपए|रुपया|रु|rs)/);
+  if(pm)p=Number(pm[1]);
+  if(!Number.isFinite(p)){
+   if(/डेढ़\s*सौ|डेढ़सौ/.test(spoken))p=150;
+   else if(/ढाई\s*सौ/.test(spoken))p=250;
+   else if(/दो\s*सौ/.test(spoken))p=200;
+   else if(/तीन\s*सौ/.test(spoken))p=300;
+   else if(/चार\s*सौ/.test(spoken))p=400;
+   else if(/पांच\s*सौ|पाँच\s*सौ/.test(spoken))p=500;
+  }
+  let m=/ऑनलाइन|online|upi|यूपीआई|फोनपे|paytm|गूगल पे/.test(spoken)?"ऑनलाइन":
+  /उधार|बाकी/.test(spoken)?"उधार":"कैश";
+  document.getElementById("status").textContent="आपने कहा: "+spoken;
+  if(!Number.isFinite(p)){
+   alert("दाम समझ नहीं आया। नीचे मैन्युअल बिक्री जोड़ें।");return;
+  }
+  if(confirm(q+" पीस × "+money(p)+" = "+money(q*p)+" ("+m+")")){
+   addRecord(q,q*p,m,"वॉइस से बिक्री");
+  }
+ };
+ rec.onerror=()=>document.getElementById("status").textContent="माइक की अनुमति जाँचें।";
+ rec.start();
+}
+function downloadCSV(){
+ let rows=[["Date","Time","Pieces","Total","Payment","Product"],
+ ...sales.map(s=>[s.date,s.time,s.qty,s.total,s.method,s.product])];
+ let csv="\uFEFF"+rows.map(r=>r.map(v=>'"'+String(v??"").replace(/"/g,'""')+'"').join(",")).join("\r\n");
+ let url=URL.createObjectURL(new Blob([csv],{type:"text/csv;charset=utf-8"}));
+ let a=document.createElement("a");a.href=url;a.download="shop-hisab.csv";a.click();
+ URL.revokeObjectURL(url);
+}
+document.getElementById("historyDate").value=today();
+document.getElementById("historyDate").addEventListener("change",render);
+render();
+</script>
+</body>
+</html>
